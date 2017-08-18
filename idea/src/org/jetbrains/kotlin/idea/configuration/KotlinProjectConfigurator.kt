@@ -48,6 +48,8 @@ interface KotlinProjectConfigurator {
 
     val targetPlatform: TargetPlatform
 
+    fun updateLanguageVersion(module: Module, languageVersion: String?, apiVersion: String?, forTests: Boolean, requiredStdlibVersion: ApiVersion)
+
     fun changeCoroutineConfiguration(module: Module, state: LanguageFeature.State)
 
     companion object {

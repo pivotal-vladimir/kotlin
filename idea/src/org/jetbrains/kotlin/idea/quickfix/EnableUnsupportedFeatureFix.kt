@@ -39,6 +39,7 @@ import org.jetbrains.kotlin.idea.KotlinPluginUtil
 import org.jetbrains.kotlin.idea.actions.internal.KotlinInternalMode
 import org.jetbrains.kotlin.idea.compiler.configuration.KotlinCommonCompilerArgumentsHolder
 import org.jetbrains.kotlin.idea.configuration.KotlinWithGradleConfigurator
+import org.jetbrains.kotlin.idea.configuration.findApplicableConfigurator
 import org.jetbrains.kotlin.idea.facet.KotlinFacet
 import org.jetbrains.kotlin.idea.facet.getRuntimeLibraryVersion
 import org.jetbrains.kotlin.idea.maven.PomFile
@@ -77,6 +78,15 @@ sealed class EnableUnsupportedFeatureFix(
                 else
                     null
             }
+            val forTests = ModuleRootManager.getInstance(module).fileIndex.isInTestSourceContent(file.virtualFile)
+
+            findApplicableConfigurator(module).updateLanguageVersion(
+                    module,
+                    if (apiVersionOnly) null else feature.sinceVersion!!.versionString,
+                    targetApiLevel,
+                    forTests,
+                    feature.sinceApiVersion
+            )
 
             if (KotlinPluginUtil.isGradleModule(module) || KotlinPluginUtil.isMavenModule(module)) {
                 if (runtimeUpdateRequired) {
@@ -116,9 +126,8 @@ sealed class EnableUnsupportedFeatureFix(
         }
 
         private fun updateGradleLanguageVersion(module: Module, file: KtFile, targetApiLevel: String?): PsiElement? {
-            val forTests = ModuleRootManager.getInstance(module).fileIndex.isInTestSourceContent(file.virtualFile)
             return KotlinWithGradleConfigurator.changeLanguageVersion(module,
-                if (apiVersionOnly) null else feature.sinceVersion!!.versionString,
+                ,
                 targetApiLevel, forTests)
         }
 

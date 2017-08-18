@@ -182,6 +182,26 @@ abstract class KotlinWithGradleConfigurator : KotlinProjectConfigurator {
         return isModified
     }
 
+    override fun updateLanguageVersion(module: Module, languageVersion: String?, apiVersion: String?, forTests: Boolean, requiredStdlibVersion: String?) {
+        val element = changeBuildGradle(module) { buildScriptFile ->
+            val manipulator = getManipulator(buildScriptFile)
+            var result: PsiElement? = null
+            if (languageVersion != null) {
+                result = manipulator.changeLanguageVersion(languageVersion, forTests)
+            }
+
+            if (apiVersion != null) {
+                result = manipulator.changeApiVersion(apiVersion, forTests)
+            }
+
+            result
+        }
+
+        element?.let {
+            OpenFileDescriptor(module.project, it.containingFile.virtualFile, it.textRange.startOffset).navigate(true)
+        }
+    }
+
     override fun changeCoroutineConfiguration(module: Module, state: LanguageFeature.State) {
         val runtimeUpdateRequired = state != LanguageFeature.State.DISABLED &&
                                     (getRuntimeLibraryVersion(module)?.startsWith("1.0") ?: false)
@@ -236,22 +256,6 @@ abstract class KotlinWithGradleConfigurator : KotlinProjectConfigurator {
 
         fun changeCoroutineConfiguration(module: Module, coroutineOption: String): PsiElement? = changeBuildGradle(module) {
             getManipulator(it).changeCoroutineConfiguration(coroutineOption)
-        }
-
-        fun changeLanguageVersion(module: Module, languageVersion: String?, apiVersion: String? = null, forTests: Boolean): PsiElement? {
-            return changeBuildGradle(module) { buildScriptFile ->
-                val manipulator = getManipulator(buildScriptFile)
-                var result: PsiElement? = null
-                if (languageVersion != null) {
-                    result = manipulator.changeLanguageVersion(languageVersion, forTests)
-                }
-
-                if (apiVersion != null) {
-                    result = manipulator.changeApiVersion(apiVersion, forTests)
-                }
-
-                result
-            }
         }
 
         private fun changeBuildGradle(module: Module, body: (PsiFile) -> PsiElement?): PsiElement? {
