@@ -24,6 +24,7 @@ import org.jetbrains.kotlin.descriptors.*
 import org.jetbrains.kotlin.diagnostics.Errors
 import org.jetbrains.kotlin.incremental.KotlinLookupLocation
 import org.jetbrains.kotlin.incremental.components.LookupLocation
+import org.jetbrains.kotlin.incremental.components.NoLookupLocation
 import org.jetbrains.kotlin.name.FqName
 import org.jetbrains.kotlin.name.Name
 import org.jetbrains.kotlin.platform.PlatformToKotlinClassMap
@@ -37,7 +38,6 @@ import org.jetbrains.kotlin.storage.StorageManager
 import org.jetbrains.kotlin.types.expressions.OperatorConventions
 import org.jetbrains.kotlin.util.collectionUtils.concat
 import org.jetbrains.kotlin.utils.Printer
-import org.jetbrains.kotlin.utils.addToStdlib.flatMapToNullable
 import java.util.*
 
 interface IndexedImports {
@@ -193,14 +193,22 @@ class LazyImportResolver(
         return importedScopesProvider(directive) ?: ImportingScope.Empty
     }
 
-    val allNames: Set<Name>? by lazy(LazyThreadSafetyMode.PUBLICATION) {
-        indexedImports.imports.flatMapToNullable(hashSetOf()) { getImportScope(it).computeImportedNames() }
-    }
+//    val allNames: Set<Name>? by lazy(LazyThreadSafetyMode.PUBLICATION) {
+//        indexedImports.imports.flatMapToNullable(hashSetOf()) { getImportScope(it).computeImportedNames() }
+//    }
 
-    fun definitelyDoesNotContainName(name: Name) = allNames?.let { name !in it } == true
+    fun definitelyDoesNotContainName(name: Name) =
+            indexedImports.importsForName(name).all {
+                getImportScope(it).let {
+                    it.getContributedFunctions(name, NoLookupLocation.FOR_ALREADY_TRACKED).isEmpty() &&
+                    it.getContributedClassifier(name, NoLookupLocation.FOR_ALREADY_TRACKED) == null &&
+                    it.getContributedVariables(name, NoLookupLocation.FOR_ALREADY_TRACKED).isEmpty()
+                }
+            }
+    //allNames?.let { name !in it } == true
 
     fun recordLookup(name: Name, location: LookupLocation) {
-        if (allNames == null) return
+        //if (allNames == null) return
         indexedImports.importsForName(name).forEach {
             getImportScope(it).recordLookup(name, location)
         }
@@ -290,5 +298,5 @@ class LazyImportScope(
         importResolver.recordLookup(name, location)
     }
 
-    override fun computeImportedNames() = importResolver.allNames
+    override fun computeImportedNames() = null// importResolver.allNames
 }
