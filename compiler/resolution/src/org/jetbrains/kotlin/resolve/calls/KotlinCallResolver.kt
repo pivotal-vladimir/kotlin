@@ -55,7 +55,7 @@ class KotlinCallResolver(
         }
 
         if (collectAllCandidates) {
-            val allCandidates = towerResolver.collectAllCandidates(scopeTower, processor)
+            val allCandidates = towerResolver.collectAllCandidates(scopeTower, processor, kotlinCall.name)
             return kotlinCallCompleter.createAllCandidatesResult(allCandidates, expectedType, resolutionCallbacks)
         }
 
