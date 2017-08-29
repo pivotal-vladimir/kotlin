@@ -1,0 +1,120 @@
+/*
+ * Copyright 2010-2015 JetBrains s.r.o.
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+package org.jetbrains.kotlin.serialization;
+
+import "core/deserialization/src/descriptors.proto";
+
+option java_outer_classname = "ProtoBufContracts";
+option optimize_for = LITE_RUNTIME;
+
+// Note: In protobuf, we use very general model of contracts in order to support
+// all possible future extensions without the need to backward-support obsolete wire formats.
+//
+// For actual model, see package 'org.jetbrains.kotlin.serialization.deserialization.contracts'
+
+message Contract {
+    repeated Effect effects = 2;
+}
+
+
+// Effects
+message Effect {
+    optional ConditionalEffect conditionalEffect = 1;
+    optional ReturnsEffect returnsEffect = 2;
+    optional CallsEffect callsEffect = 3;
+}
+
+message ConditionalEffect {
+    optional Effect premise = 1;
+    optional Expression conclusion = 2;
+}
+
+message ReturnsEffect {
+    optional Constant returnValue = 1;
+}
+
+message CallsEffect {
+    enum InvocationKind {
+        AT_MOST_ONCE = 1;
+        EXACTLY_ONCE = 2;
+        AT_LEAST_ONCE = 3;
+    }
+
+    optional Variable callable = 1;
+
+    // Absence of 'kind' means that exact amount of invocations is unknown
+    optional InvocationKind kind = 2;
+}
+
+
+// Expressions
+message Expression {
+    optional Variable variable = 1;
+    optional Constant constant = 2;
+    optional Predicate predicate = 3;
+    optional LogicalNot logicalNot = 4;
+    optional LogicalAnd logicalAnd = 5;
+    optional LogicalOr logicalOr = 6;
+}
+
+message LogicalAnd {
+    optional Expression left = 1;
+    optional Expression right = 2;
+}
+
+message LogicalOr {
+    optional Expression left = 1;
+    optional Expression right = 2;
+}
+
+message LogicalNot {
+    optional Expression arg = 1;
+}
+
+
+// Predicates
+message Predicate {
+    optional IsInstancePredicate isInstancePredicate = 1;
+    optional IsNullPredicate isNullPredicate = 2;
+}
+
+message IsInstancePredicate {
+    optional Expression arg = 1;
+
+    optional Type type = 2;
+    optional int32 typeId = 3;
+}
+
+message IsNullPredicate {
+    optional Expression arg = 1;
+}
+
+
+// Values
+message Variable {
+    // Can we refer to property here?
+    optional int32 name = 1;
+}
+
+message Constant {
+    enum ConstantValue {
+        TRUE = 1;
+        FALSE = 2;
+        NULL = 3;
+    }
+    optional ConstantValue constantValue = 1;
+}

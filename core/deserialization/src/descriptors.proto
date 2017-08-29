@@ -17,6 +17,7 @@
 package org.jetbrains.kotlin.serialization;
 
 import "core/deserialization/src/ext_options.proto";
+import "core/deserialization/src/contracts.proto";
 
 option java_outer_classname = "ProtoBuf";
 option optimize_for = LITE_RUNTIME;
@@ -288,6 +289,8 @@ message Function {
 
   // Index into the SinceKotlinInfoTable
   optional int32 sinceKotlinInfo = 31;
+
+  optional Contract contract = 32;
 
   extensions 100 to 199;
 }
