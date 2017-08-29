@@ -34,6 +34,7 @@ import java.io.IOException
 import java.util.Comparator
 
 import com.android.SdkConstants.VALUE_FALSE
+import com.android.tools.lint.LintCoreApplicationEnvironment
 
 class KotlinLintExecutor(
         val project: Project,
@@ -276,6 +277,9 @@ class KotlinLintExecutor(
 
         val warnings: Pair<List<Warning>, LintBaseline>
         try {
+            LintCoreApplicationEnvironment.registerKotlinUastPlugin()
+            registerKotlinComponents()
+
             warnings = client.run(registry)
         } catch (e: IOException) {
             throw GradleException("Invalid arguments.", e)
@@ -286,6 +290,10 @@ class KotlinLintExecutor(
         }
 
         return warnings
+    }
+
+    private fun registerKotlinComponents() {
+        //TODO register Kotlin components
     }
 
     fun getManifestReportFile(variant: Variant?): File? {

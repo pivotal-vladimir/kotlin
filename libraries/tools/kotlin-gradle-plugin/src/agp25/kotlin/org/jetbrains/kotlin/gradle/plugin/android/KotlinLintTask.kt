@@ -1,15 +1,26 @@
 package org.jetbrains.kotlin.gradle.plugin.android
 
+import com.android.build.FilterData
+import com.android.build.OutputFile
 import com.android.build.gradle.internal.dsl.LintOptions
+import com.android.build.gradle.internal.ide.DependenciesImpl
+import com.android.build.gradle.internal.ide.FilterDataImpl
+import com.android.build.gradle.internal.ide.JavaArtifactImpl
+import com.android.build.gradle.internal.ide.JavaLibraryImpl
+import com.android.build.gradle.internal.ide.level2.AndroidLibraryImpl
 import com.android.builder.model.LintOptions as ILintOptions
 import com.android.build.gradle.internal.scope.VariantScope
 import com.android.build.gradle.internal.tasks.BaseTask
 import com.android.build.gradle.tasks.Lint
 import com.android.builder.core.AndroidBuilder
+import com.android.builder.dependency.MavenCoordinatesImpl
+import com.android.builder.internal.ClassFieldImpl
 import com.android.builder.model.*
+import com.android.builder.model.level2.DependencyGraphs
 import com.android.ide.common.repository.GradleCoordinate
 import com.android.manifmerger.ManifestMerger2
 import com.android.repository.Revision
+import com.android.resources.ResourceType
 import com.android.sdklib.BuildToolInfo
 import com.android.tools.lint.Reporter
 import com.android.tools.lint.checks.ApiParser
@@ -23,8 +34,13 @@ import org.gradle.api.file.FileCollection
 import org.gradle.api.internal.AbstractTask
 import org.gradle.api.tasks.ParallelizableTask
 import org.gradle.api.tasks.TaskAction
+import org.gradle.internal.impldep.com.fasterxml.jackson.databind.annotation.JsonSerialize
 import org.gradle.tooling.provider.model.ToolingModelBuilderRegistry
 import org.jetbrains.kotlin.gradle.plugin.Android25ProjectHandler.Companion.LINT_WITH_KOTLIN_CONFIGURATION_NAME
+import org.jetbrains.kotlin.gradle.plugin.android.mappings.KoAndroidArtifact
+import org.jetbrains.kotlin.gradle.plugin.android.mappings.KoAndroidArtifactOutput
+import org.jetbrains.kotlin.gradle.plugin.android.mappings.KoOutputFile
+import org.jetbrains.kotlin.gradle.plugin.android.mappings.KoVariant
 import org.jetbrains.uast.UastContext
 import org.objectweb.asm.ClassVisitor
 import org.objectweb.asm.tree.AbstractInsnNode
@@ -34,36 +50,63 @@ import java.io.File
 import java.lang.reflect.Field
 import java.net.URL
 import java.net.URLClassLoader
+import lombok.ast.Node as LombokNode
 
 @ParallelizableTask
 open class KotlinLintTask : AbstractTask() {
     private companion object {
-        inline fun <reified T : Any> instanceCreator(newClassLoader: ClassLoader) = InstanceCreator {
-            Class.forName(T::class.java.name, true, newClassLoader).newInstance()
-        }
+        private val CLASS_MAPPINGS = listOf(
+                Variant::class.java to KoVariant::class.java,
+                ILintOptions::class.java to LintOptions::class.java,
+                AndroidArtifact::class.java to KoAndroidArtifact::class.java,
+                AndroidArtifactOutput::class.java to KoAndroidArtifactOutput::class.java,
+                ClassField::class.java to ClassFieldImpl::class.java,
+                JavaArtifact::class.java to JavaArtifactImpl::class.java,
+                FilterData::class.java to FilterDataImpl::class.java,
+                OutputFile::class.java to KoOutputFile::class.java,
+                Dependencies::class.java to DependenciesImpl::class.java,
+                AndroidLibrary::class.java to AndroidLibraryImpl::class.java,
+                JavaLibrary::class.java to JavaLibraryImpl::class.java,
+                MavenCoordinates::class.java to MavenCoordinatesImpl::class.java
+        ).map { it.first.name to it.second.name }
 
         fun createGson(newClassLoader: ClassLoader): Gson {
-            val lintOptions = Class.forName(ILintOptions::class.java.name, false, newClassLoader)
-            val variant = Class.forName(Variant::class.java.name, false, newClassLoader)
+            val exclusionRules: ExclusionStrategy = object : ExclusionStrategy {
+                val excludedClassNames = listOf(
+                        SigningConfig::class.java,
+                        AaptOptions::class.java,
+                        ArtifactMetaData::class.java,
+                        JavaCompileOptions::class.java,
+                        ProductFlavorContainer::class.java,
+                        SyncIssue::class.java,
+                        BuildTypeContainer::class.java,
+                        NativeToolchain::class.java,
+                        AndroidArtifactOutput::class.java,
+                        NativeLibrary::class.java,
+                        ProductFlavor::class.java,
+                        InstantRun::class.java,
+                        DependencyGraphs::class.java
+                ).map { it.name }
+
+                val excludedFieldNames = listOf("__dyn_obj__", "__meta_class__")
+
+                override fun shouldSkipClass(clazz: Class<*>) = clazz.name in excludedClassNames
+                override fun shouldSkipField(f: FieldAttributes) = f.name in excludedFieldNames
+            }
 
             return GsonBuilder()
-                    .addDeserializationExclusionStrategy(object : ExclusionStrategy {
-                        val excludedNames = listOf(
-                                SigningConfig::class.java,
-                                AaptOptions::class.java,
-                                ArtifactMetaData::class.java,
-                                JavaCompileOptions::class.java,
-                                ProductFlavorContainer::class.java,
-                                SyncIssue::class.java,
-                                BuildTypeContainer::class.java,
-                                NativeToolchain::class.java
-                        ).map { it.name }
+                    .addSerializationExclusionStrategy(exclusionRules)
+                    .addDeserializationExclusionStrategy(exclusionRules)
+                    .apply {
+                        for ((originalName, mappedName) in CLASS_MAPPINGS) {
+                            val originalClass = Class.forName(originalName, true, newClassLoader)
+                            val mappedClass = Class.forName(mappedName, true, newClassLoader)
 
-                        override fun shouldSkipClass(clazz: Class<*>) = clazz.name in excludedNames
-                        override fun shouldSkipField(f: FieldAttributes?) = false
-                    })
-                    .registerTypeAdapter(lintOptions, instanceCreator<LintOptions>(newClassLoader))
-                    .registerTypeAdapter(variant, instanceCreator<KotlinLintTaskVariant>(newClassLoader))
+                            registerTypeAdapter(originalClass, JsonDeserializer<Any> { json, type, context ->
+                                context.deserialize(json, mappedClass)
+                            })
+                        }
+                    }
                     .create()
         }
     }
@@ -171,6 +214,8 @@ open class KotlinLintTask : AbstractTask() {
         val builderModel = findLibraryFor<com.android.builder.model.LintOptions>()
         val common = findLibraryFor<com.android.utils.Pair<*, *>>()
         val manifestMerger = findLibraryFor<ManifestMerger2>()
+        val layoutLibApi = findLibraryFor<ResourceType>()
+        val lombokAst = findLibraryFor<LombokNode>()
 
         // Third-parties
         val asm = findLibraryFor<ClassVisitor>()
@@ -188,8 +233,10 @@ open class KotlinLintTask : AbstractTask() {
 
         return arrayOf(guava, kotlinGradlePlugin, *kotlinCompilerAndUast,
                 builder, gradleCore, sdklib, sdkCommon, repository, builderModel, common, manifestMerger,
-                asm, asmTree, asmAnalysis, gson, kxml,
-                lint, lintApi, lintChecks, uastJava).apply {
+                layoutLibApi, lombokAst,
+                asm, asmTree, asmAnalysis,
+                gson, kxml,
+                lint, lintApi, lintChecks).apply {
             project.logger.warn("Lint with Kotlin classpath: ${this.joinToString { it.path }}")
         }
     }

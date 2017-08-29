@@ -68,7 +68,9 @@ class Android25ProjectHandler(kotlinConfigurationTools: KotlinConfigurationTools
         fun addDependency(dep: String) = configuration.dependencies.add(project.dependencies.create(dep))
 
         val kotlinPluginVersion = this.loadKotlinVersionFromResource(project.logger)
+        addDependency("org.jetbrains.kotlin:kotlin-uast-base:$kotlinPluginVersion")
         addDependency("org.jetbrains.kotlin:kotlin-compiler:$kotlinPluginVersion")
+        addDependency("org.jetbrains.kotlin:kotlin-uast-language-plugin:$kotlinPluginVersion")
 
         return configuration
     }

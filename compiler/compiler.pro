@@ -216,5 +216,5 @@ messages/**)
 
 # for Android Lint
 -keepclassmembers class com.intellij.openapi.roots.LanguageLevelProjectExtension {
-    public static void setLanguageLevel(com.intellij.pom.java.LanguageLevel);
+    public void setLanguageLevel(com.intellij.pom.java.LanguageLevel);
 }
