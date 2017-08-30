@@ -9,10 +9,7 @@ import com.android.build.gradle.tasks.Lint
 import com.android.builder.model.AndroidProject
 import com.android.builder.model.Variant
 import com.android.sdklib.BuildToolInfo
-import com.android.tools.lint.LintCliFlags
-import com.android.tools.lint.Reporter
 import com.android.tools.lint.Reporter.Stats
-import com.android.tools.lint.Warning
 import com.android.tools.lint.checks.BuiltinIssueRegistry
 import com.android.tools.lint.checks.GradleDetector
 import com.android.tools.lint.checks.UnusedResourceDetector
@@ -35,9 +32,34 @@ import java.util.Comparator
 
 import com.android.SdkConstants.VALUE_FALSE
 import com.android.build.gradle.internal.LintGradleProject
-import com.android.tools.lint.LintCoreApplicationEnvironment
+import com.android.tools.lint.*
 import com.android.tools.lint.client.api.IssueRegistry
 import com.android.tools.lint.client.api.LintRequest
+import com.intellij.codeInsight.ExternalAnnotationsManager
+import com.intellij.codeInsight.InferredAnnotationsManager
+import com.intellij.core.JavaCoreApplicationEnvironment
+import com.intellij.core.JavaCoreProjectEnvironment
+import com.intellij.openapi.components.ServiceManager
+import com.intellij.openapi.extensions.Extensions
+import com.intellij.psi.PsiElementFinder
+import com.intellij.psi.impl.PsiElementFinderImpl
+import com.intellij.psi.impl.file.impl.JavaFileManager
+import org.jetbrains.kotlin.asJava.LightClassGenerationSupport
+import org.jetbrains.kotlin.asJava.finder.JavaElementFinder
+import org.jetbrains.kotlin.cli.jvm.compiler.CliLightClassGenerationSupport
+import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment
+import org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment.Companion.registerApplicationServices
+import org.jetbrains.kotlin.cli.jvm.compiler.MockExternalAnnotationsManager
+import org.jetbrains.kotlin.cli.jvm.compiler.MockInferredAnnotationsManager
+import org.jetbrains.kotlin.codegen.extensions.ClassBuilderInterceptorExtension
+import org.jetbrains.kotlin.codegen.extensions.ExpressionCodegenExtension
+import org.jetbrains.kotlin.extensions.DeclarationAttributeAltererExtension
+import org.jetbrains.kotlin.extensions.PreprocessedVirtualFileFactoryExtension
+import org.jetbrains.kotlin.extensions.StorageComponentContainerContributor
+import org.jetbrains.kotlin.resolve.CodeAnalyzerInitializer
+import org.jetbrains.kotlin.resolve.extensions.SyntheticResolveExtension
+import org.jetbrains.kotlin.resolve.jvm.extensions.AnalysisHandlerExtension
+import org.jetbrains.kotlin.resolve.jvm.extensions.PackageFragmentProviderExtension
 
 class KotlinLintExecutor(
         val project: Project,
@@ -280,8 +302,7 @@ class KotlinLintExecutor(
 
         val warnings: Pair<List<Warning>, LintBaseline>
         try {
-            LintCoreApplicationEnvironment.registerKotlinUastPlugin()
-            registerKotlinComponents()
+            registerApplicationComponentsIfNeeded()
 
             warnings = client.run(registry)
         } catch (e: IOException) {
@@ -295,8 +316,22 @@ class KotlinLintExecutor(
         return warnings
     }
 
-    private fun registerKotlinComponents() {
-        //TODO register Kotlin components
+    private var applicationComponentsRegistered = false
+
+    fun registerApplicationComponentsIfNeeded() {
+        if (!applicationComponentsRegistered) {
+            applicationComponentsRegistered = true
+
+            registerKotlinApplicationComponents(LintCoreApplicationEnvironment.get())
+            LintCoreApplicationEnvironment.registerKotlinUastPlugin()
+        }
+    }
+
+    private fun registerKotlinApplicationComponents(environment: JavaCoreApplicationEnvironment) {
+        val kotlinCoreEnv = Class.forName("org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment")
+        val kotlinCoreEnvCompanion = kotlinCoreEnv.getDeclaredField("Companion").get(null)
+        kotlinCoreEnvCompanion.javaClass.declaredMethods.single { it.name == "registerApplicationServices" }
+                .invoke(kotlinCoreEnvCompanion, environment)
     }
 
     fun getManifestReportFile(variant: Variant?): File? {
@@ -409,5 +444,17 @@ private class KotlinLintGradleClient(
         }
 
         return super.createLintRequest(files)
+    }
+
+    override fun initializeProjects(knownProjects: MutableCollection<com.android.tools.lint.detector.api.Project>?) {
+        super.initializeProjects(knownProjects)
+//        registerKotlinProjectComponents(this)
+    }
+
+    private fun registerKotlinProjectComponents(environment: JavaCoreProjectEnvironment) = with (environment.project) {
+        val kotlinCoreEnv = Class.forName("org.jetbrains.kotlin.cli.jvm.compiler.KotlinCoreEnvironment")
+        val kotlinCoreEnvCompanion = kotlinCoreEnv.getDeclaredField("Companion").get(null)
+        kotlinCoreEnvCompanion.javaClass.declaredMethods.single { it.name == "registerProjectServices" }
+                .invoke(kotlinCoreEnvCompanion, environment, null)
     }
 }
