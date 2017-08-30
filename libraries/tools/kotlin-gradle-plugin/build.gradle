@@ -35,6 +35,9 @@ dependencies {
     compile "org.jetbrains.kotlin:kotlin-compiler-runner:$kotlin_version"
     compile "org.jetbrains.kotlin:kotlin-annotation-processing:$kotlin_version"
 
+    compile "com.esotericsoftware:kryo:4.0.1"
+    compile "de.javakaffee:kryo-serializers:0.42"
+
     compileOnly 'com.android.tools.build:gradle:2.0.0'
     compileOnly 'org.codehaus.groovy:groovy-all:2.3.9'
     compileOnly 'org.jetbrains.kotlin:gradle-api:2.2'
