@@ -34,7 +34,10 @@ import java.io.IOException
 import java.util.Comparator
 
 import com.android.SdkConstants.VALUE_FALSE
+import com.android.build.gradle.internal.LintGradleProject
 import com.android.tools.lint.LintCoreApplicationEnvironment
+import com.android.tools.lint.client.api.IssueRegistry
+import com.android.tools.lint.client.api.LintRequest
 
 class KotlinLintExecutor(
         val project: Project,
@@ -126,7 +129,7 @@ class KotlinLintExecutor(
 
             val registry = BuiltinIssueRegistry()
             val flags = LintCliFlags()
-            val client = LintGradleClient(
+            val client = KotlinLintGradleClient(
                     registry, flags, project, modelProject,
                     sdkHome, variant, buildTools, getManifestReportFile(variant))
             syncOptions(lintOptions, client, flags, null, project, reportsDir,
@@ -261,7 +264,7 @@ class KotlinLintExecutor(
             report: Boolean): Pair<List<Warning>, LintBaseline> {
         val registry = createIssueRegistry()
         val flags = LintCliFlags()
-        val client = LintGradleClient(registry, flags, project, modelProject,
+        val client = KotlinLintGradleClient(registry, flags, project, modelProject,
                 sdkHome, variant, buildTools, getManifestReportFile(variant))
         if (fatalOnly) {
             flags.isFatalOnly = true
@@ -378,5 +381,33 @@ class KotlinLintExecutor(
         private fun createIssueRegistry(): BuiltinIssueRegistry {
             return LintGradleIssueRegistry()
         }
+    }
+}
+
+private class KotlinLintGradleClient(
+        registry: IssueRegistry?,
+        flags: LintCliFlags?,
+        private val gradleProject: Project?,
+        private val modelProject: AndroidProject?,
+        sdkHome: File?,
+        private val variant: Variant?,
+        buildToolInfo: BuildToolInfo?,
+        reportFile: File?
+) : LintGradleClient(registry, flags, gradleProject, modelProject, sdkHome, variant, buildToolInfo, reportFile) {
+    override fun createLintRequest(files: MutableList<File>?): LintRequest {
+        if (Lint.MODEL_LIBRARIES) {
+            // We emulating the old behavior here, ignoring MODEL_LIBRARIES mode
+
+            val lintRequest = LintRequest(this, files)
+
+            val result = LintGradleProject.create(
+                    this, modelProject, variant, gradleProject)
+            lintRequest.projects = listOf<com.android.tools.lint.detector.api.Project>(result.first)
+            setCustomRules(result.second)
+
+            return lintRequest
+        }
+
+        return super.createLintRequest(files)
     }
 }

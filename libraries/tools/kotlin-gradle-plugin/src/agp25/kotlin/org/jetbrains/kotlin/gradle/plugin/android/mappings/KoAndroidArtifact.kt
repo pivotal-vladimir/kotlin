@@ -18,12 +18,11 @@ class KoAndroidArtifact : AndroidArtifact {
     private var buildConfigFields: Map<String, ClassField>? = null
     private var compileTaskName: String = ""
     private var javaResourcesFolder: File? = null
-    private var outputs: Collection<AndroidArtifactOutput>? = null
+    @JvmField var outputs: Collection<AndroidArtifactOutput>? = null
     private var nativeLibraries: Collection<NativeLibrary>? = null
     private var isSigned: Boolean = false
     private var resValues: Map<String, ClassField>? = null
     private var compileDependencies: Dependencies? = null
-    private var dependencies: Dependencies? = null
     private var variantSourceProvider: SourceProvider? = null
     private var generatedSourceFolders: Collection<File>? = null
     private var abiFilters: Set<String>? = null
@@ -47,7 +46,7 @@ class KoAndroidArtifact : AndroidArtifact {
     override fun isSigned() = isSigned
     override fun getResValues() = resValues
     override fun getCompileDependencies() = compileDependencies
-    override fun getDependencies() = dependencies
+    override fun getDependencies() = compileDependencies
     override fun getVariantSourceProvider() = variantSourceProvider
     override fun getGeneratedSourceFolders() = generatedSourceFolders
     override fun getAbiFilters() = abiFilters

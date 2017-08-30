@@ -28,6 +28,8 @@ import com.intellij.openapi.project.Project as IdeaProject
 import com.android.tools.lint.client.api.LintRequest
 import com.google.common.collect.Sets
 import com.google.gson.*
+import com.google.gson.stream.JsonReader
+import com.google.gson.stream.JsonWriter
 import com.intellij.util.PathUtil
 import org.gradle.api.Project
 import org.gradle.api.file.FileCollection
@@ -58,7 +60,7 @@ open class KotlinLintTask : AbstractTask() {
         private val CLASS_MAPPINGS = listOf(
                 Variant::class.java to KoVariant::class.java,
                 ILintOptions::class.java to LintOptions::class.java,
-                AndroidArtifact::class.java to KoAndroidArtifact::class.java,
+//                AndroidArtifact::class.java to KoAndroidArtifact::class.java,
                 AndroidArtifactOutput::class.java to KoAndroidArtifactOutput::class.java,
                 ClassField::class.java to ClassFieldImpl::class.java,
                 JavaArtifact::class.java to JavaArtifactImpl::class.java,
@@ -94,9 +96,23 @@ open class KotlinLintTask : AbstractTask() {
                 override fun shouldSkipField(f: FieldAttributes) = f.name in excludedFieldNames
             }
 
+            val androidArtifact = Class.forName(AndroidArtifact::class.java.name, false, newClassLoader)
+
             return GsonBuilder()
                     .addSerializationExclusionStrategy(exclusionRules)
                     .addDeserializationExclusionStrategy(exclusionRules)
+                    .registerTypeAdapter(androidArtifact,
+                            JsonSerializer<AndroidArtifact> { src, _, context ->
+                        context.serialize(src, src.javaClass)
+                        context.serialize(src.outputs)
+                    })
+//                    .registerTypeAdapter(androidArtifact,
+//                            JsonDeserializer<Any> { json, typeOfT, context ->
+//                        val koAndroidArtifact = Class.forName(KoAndroidArtifact::class.java.name, true, newClassLoader)
+//                        val artifact = context.deserialize<Any>(json, koAndroidArtifact)
+//                        koAndroidArtifact.getDeclaredField("outputs").set(context.deserialize)
+//                        return@JsonDeserializer artifact
+//                    }
                     .apply {
                         for ((originalName, mappedName) in CLASS_MAPPINGS) {
                             val originalClass = Class.forName(originalName, true, newClassLoader)
