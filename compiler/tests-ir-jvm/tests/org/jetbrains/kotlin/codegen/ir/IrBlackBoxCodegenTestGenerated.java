@@ -14323,6 +14323,12 @@ public class IrBlackBoxCodegenTestGenerated extends AbstractIrBlackBoxCodegenTes
                 doTest(fileName);
             }
 
+            @TestMetadata("openSuspendFun.kt")
+            public void testOpenSuspendFun() throws Exception {
+                String fileName = KotlinTestUtils.navigationMetadata("compiler/testData/codegen/box/reflection/annotations/openSuspendFun.kt");
+                doTest(fileName);
+            }
+
             @TestMetadata("privateAnnotation.kt")
             public void testPrivateAnnotation() throws Exception {
                 String fileName = KotlinTestUtils.navigationMetadata("compiler/testData/codegen/box/reflection/annotations/privateAnnotation.kt");
@@ -15448,6 +15454,12 @@ public class IrBlackBoxCodegenTestGenerated extends AbstractIrBlackBoxCodegenTes
             @TestMetadata("memberProperty.kt")
             public void testMemberProperty() throws Exception {
                 String fileName = KotlinTestUtils.navigationMetadata("compiler/testData/codegen/box/reflection/mapping/memberProperty.kt");
+                doTest(fileName);
+            }
+
+            @TestMetadata("openSuspendFun.kt")
+            public void testOpenSuspendFun() throws Exception {
+                String fileName = KotlinTestUtils.navigationMetadata("compiler/testData/codegen/box/reflection/mapping/openSuspendFun.kt");
                 doTest(fileName);
             }
 
