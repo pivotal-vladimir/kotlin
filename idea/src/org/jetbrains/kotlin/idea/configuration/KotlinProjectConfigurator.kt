@@ -19,6 +19,7 @@ package org.jetbrains.kotlin.idea.configuration
 import com.intellij.openapi.extensions.ExtensionPointName
 import com.intellij.openapi.module.Module
 import com.intellij.openapi.project.Project
+import org.jetbrains.kotlin.config.ApiVersion
 import org.jetbrains.kotlin.config.LanguageFeature
 import org.jetbrains.kotlin.resolve.TargetPlatform
 
@@ -48,7 +49,7 @@ interface KotlinProjectConfigurator {
 
     val targetPlatform: TargetPlatform
 
-    fun updateLanguageVersion(module: Module, languageVersion: String?, apiVersion: String?, forTests: Boolean, requiredStdlibVersion: ApiVersion)
+    fun updateLanguageVersion(module: Module, languageVersion: String?, apiVersion: String?, requiredStdlibVersion: ApiVersion, forTests: Boolean)
 
     fun changeCoroutineConfiguration(module: Module, state: LanguageFeature.State)
 
