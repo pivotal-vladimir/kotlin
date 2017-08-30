@@ -31,7 +31,7 @@ import java.util.regex.Pattern;
 @RunWith(JUnit3RunnerWithInners.class)
 public class GradleConfigureProjectByChangingFileTestGenerated extends AbstractGradleConfigureProjectByChangingFileTest {
     @TestMetadata("idea/testData/configuration/gradle")
-    @TestDataPath("$PROJECT_ROOT")
+    @TestDataPath("/")
     @RunWith(JUnit3RunnerWithInners.class)
     public static class Gradle extends AbstractGradleConfigureProjectByChangingFileTest {
         public void testAllFilesPresentInGradle() throws Exception {
@@ -82,7 +82,7 @@ public class GradleConfigureProjectByChangingFileTestGenerated extends AbstractG
     }
 
     @TestMetadata("idea/testData/configuration/gsk")
-    @TestDataPath("$PROJECT_ROOT")
+    @TestDataPath("/")
     @RunWith(JUnit3RunnerWithInners.class)
     public static class Gsk extends AbstractGradleConfigureProjectByChangingFileTest {
         public void testAllFilesPresentInGsk() throws Exception {
